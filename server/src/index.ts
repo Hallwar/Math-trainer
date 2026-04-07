@@ -28,7 +28,7 @@ interface Round { type: "normal" | "demo" | "poll"; topicId: string; goalTasks?:
 
 // ─── Poll state ───────────────────────────────────────────────────────────────
 interface PollState {
-  question: { id: string; text: string; answer: number; options: number[]; optionLabels?: string[] };
+  question: { id: string; text: string; answer: number; options?: number[]; optionLabels?: string[] };
   votes: number[];
   voterIds: Set<string>;
   revealed: boolean;
