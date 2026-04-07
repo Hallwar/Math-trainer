@@ -12,7 +12,7 @@ export interface SavedTeacher {
   sessionId: string;
   code: string;
   topicLabel: string;
-  rounds: { type: "normal" | "demo"; topicId: string; goalTasks?: number }[];
+  rounds: { type: "normal" | "demo" | "poll"; topicId: string; goalTasks?: number; answerMode?: "multiple_choice" | "input" }[];
   countdownMinutes?: number;
 }
 
