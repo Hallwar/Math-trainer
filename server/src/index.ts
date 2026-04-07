@@ -24,7 +24,7 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: "*" } });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-interface Round { topicId: string; goalTasks: number }
+interface Round { type: "normal" | "demo"; topicId: string; goalTasks?: number }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function parseRounds(json: string): Round[] {
@@ -66,7 +66,8 @@ function getSessionStats(sessionId: string) {
     return { id: s.id, username: s.username, roundCorrect, roundTotal, roundDone, allCorrect };
   });
 
-  const doneCount = studentStats.filter((s) => s.roundDone).length;
+  const isDemo = rounds[currentRound]?.type === "demo";
+  const doneCount = isDemo ? students.length : studentStats.filter((s) => s.roundDone).length;
   const totalCorrect = studentStats.reduce((sum, s) => sum + s.roundCorrect, 0);
 
   const wrongQuestions = db
@@ -152,6 +153,24 @@ io.on("connection", (socket) => {
     });
     const stats = getSessionStats(sessionId);
     io.to(`session:${sessionId}`).emit("stats:update", stats);
+  });
+
+  // Teacher requests next demo question (broadcast to students too)
+  socket.on("teacher:demo_question", (sessionId: string, callback: (q: any) => void) => {
+    const session = db.prepare("SELECT * FROM sessions WHERE id = ?").get(sessionId) as any;
+    if (!session) return;
+    const rounds = parseRounds(session.rounds);
+    const topic = TOPICS.find((t) => t.id === rounds[session.current_round]?.topicId);
+    if (!topic) return;
+    const q = topic.generate();
+    // Broadcast question to students (they see it on their screen)
+    socket.to(`session:${sessionId}`).emit("demo:question", q);
+    callback(q);
+  });
+
+  // Teacher reveals answer in demo mode
+  socket.on("teacher:demo_reveal", (sessionId: string, answer: number) => {
+    io.to(`session:${sessionId}`).emit("demo:reveal", { answer });
   });
 
   // Teacher ends session

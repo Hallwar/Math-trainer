@@ -4,12 +4,12 @@ import { socket } from "../socket";
 import s from "./Home.module.css";
 
 interface Topic { id: string; name: string; description: string; grade: string }
-interface RoundConfig { topicId: string; goalTasks: string }
+interface RoundConfig { type: "normal" | "demo"; topicId: string; goalTasks: string }
 
 export default function Home({ onNavigate }: { onNavigate: (v: AppView) => void }) {
   const [mode, setMode] = useState<"choose" | "teacher" | "student">("choose");
   const [topics, setTopics] = useState<Topic[]>([]);
-  const [rounds, setRounds] = useState<RoundConfig[]>([{ topicId: "", goalTasks: "" }]);
+  const [rounds, setRounds] = useState<RoundConfig[]>([{ type: "normal", topicId: "", goalTasks: "" }]);
   const [countdown, setCountdown] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -19,7 +19,7 @@ export default function Home({ onNavigate }: { onNavigate: (v: AppView) => void 
     const res = await fetch("/api/topics");
     const data: Topic[] = await res.json();
     setTopics(data);
-    setRounds([{ topicId: data[0]?.id ?? "", goalTasks: "" }]);
+    setRounds([{ type: "normal", topicId: data[0]?.id ?? "", goalTasks: "" }]);
     setMode("teacher");
   }
 
@@ -27,8 +27,8 @@ export default function Home({ onNavigate }: { onNavigate: (v: AppView) => void 
     setRounds((prev) => prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r));
   }
 
-  function addRound() {
-    setRounds((prev) => [...prev, { topicId: topics[0]?.id ?? "", goalTasks: "" }]);
+  function addRound(type: "normal" | "demo" = "normal") {
+    setRounds((prev) => [...prev, { type, topicId: topics[0]?.id ?? "", goalTasks: "" }]);
   }
 
   function removeRound(i: number) {
@@ -38,7 +38,9 @@ export default function Home({ onNavigate }: { onNavigate: (v: AppView) => void 
   async function createSession() {
     for (const r of rounds) {
       if (!r.topicId) { setError("Velg tema for alle runder"); return; }
-      if (!r.goalTasks || parseInt(r.goalTasks) < 1) { setError("Sett et mål (min. 1) for alle runder"); return; }
+      if (r.type === "normal" && (!r.goalTasks || parseInt(r.goalTasks) < 1)) {
+        setError("Sett et mål (min. 1) for alle vanlige runder"); return;
+      }
     }
     setLoading(true);
     setError("");
@@ -47,7 +49,11 @@ export default function Home({ onNavigate }: { onNavigate: (v: AppView) => void 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          rounds: rounds.map((r) => ({ topicId: r.topicId, goalTasks: parseInt(r.goalTasks) })),
+          rounds: rounds.map((r) => ({
+            type: r.type,
+            topicId: r.topicId,
+            goalTasks: r.type === "normal" ? parseInt(r.goalTasks) : undefined,
+          })),
           countdownMinutes: countdown ? parseInt(countdown) : undefined,
         }),
       });
@@ -59,7 +65,7 @@ export default function Home({ onNavigate }: { onNavigate: (v: AppView) => void 
         page: "teacher",
         sessionId: data.sessionId,
         code: data.code,
-        rounds: rounds.map((r) => ({ topicId: r.topicId, goalTasks: parseInt(r.goalTasks) })),
+        rounds: rounds.map((r) => ({ type: r.type, topicId: r.topicId, goalTasks: r.type === "normal" ? parseInt(r.goalTasks) : undefined })),
         topicLabel: label,
         countdownMinutes: countdown ? parseInt(countdown) : undefined,
       });
@@ -121,8 +127,16 @@ export default function Home({ onNavigate }: { onNavigate: (v: AppView) => void 
 
           <div className={s.roundsList}>
             {rounds.map((r, i) => (
-              <div key={i} className={s.roundRow}>
+              <div key={i} className={`${s.roundRow} ${r.type === "demo" ? s.roundRowDemo : ""}`}>
                 <span className={s.roundNum}>Runde {i + 1}</span>
+                <select
+                  value={r.type}
+                  onChange={(e) => updateRound(i, "type", e.target.value)}
+                  className={s.typeSelect}
+                >
+                  <option value="normal">Øving</option>
+                  <option value="demo">Tavle</option>
+                </select>
                 <select
                   value={r.topicId}
                   onChange={(e) => updateRound(i, "topicId", e.target.value)}
@@ -132,15 +146,19 @@ export default function Home({ onNavigate }: { onNavigate: (v: AppView) => void 
                     <option key={t.id} value={t.id}>{t.name} — {t.grade}</option>
                   ))}
                 </select>
-                <input
-                  type="number"
-                  min={1}
-                  placeholder="Mål"
-                  value={r.goalTasks}
-                  onChange={(e) => updateRound(i, "goalTasks", e.target.value)}
-                  className={s.roundGoal}
-                />
-                <span className={s.roundGoalLabel}>rette</span>
+                {r.type === "normal" && (
+                  <>
+                    <input
+                      type="number"
+                      min={1}
+                      placeholder="Mål"
+                      value={r.goalTasks}
+                      onChange={(e) => updateRound(i, "goalTasks", e.target.value)}
+                      className={s.roundGoal}
+                    />
+                    <span className={s.roundGoalLabel}>rette</span>
+                  </>
+                )}
                 {rounds.length > 1 && (
                   <button className={s.removeRound} onClick={() => removeRound(i)}>✕</button>
                 )}
@@ -148,7 +166,10 @@ export default function Home({ onNavigate }: { onNavigate: (v: AppView) => void 
             ))}
           </div>
 
-          <button className={s.addRound} onClick={addRound}>+ Legg til runde</button>
+          <div className={s.addRoundRow}>
+            <button className={s.addRound} onClick={() => addRound("normal")}>+ Øvingsrunde</button>
+            <button className={s.addRoundDemo} onClick={() => addRound("demo")}>+ Tavlerunde</button>
+          </div>
 
           <label>
             Nedtelling (minutter, valgfritt)

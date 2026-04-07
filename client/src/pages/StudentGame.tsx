@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { socket } from "../socket";
+import DemoStudent from "./DemoStudent";
 import s from "./StudentGame.module.css";
 
 interface Question {
@@ -15,9 +16,11 @@ interface Props {
 }
 
 type GameState = "waiting" | "playing" | "answered" | "round_complete" | "ended";
+type RoundType = "normal" | "demo";
 
 export default function StudentGame({ username, topicName: initialTopicName, goalTasks: initialGoal, countdownMinutes, currentRound: initialRound, totalRounds: initialTotal, onHome }: Props) {
   const [gameState, setGameState] = useState<GameState>("waiting");
+  const [roundType, setRoundType] = useState<RoundType>("normal");
   const [question, setQuestion] = useState<Question | null>(null);
   const [feedback, setFeedback] = useState<{ isCorrect: boolean; correctAnswer: number } | null>(null);
   const [correctCount, setCorrectCount] = useState(0);
@@ -34,28 +37,40 @@ export default function StudentGame({ username, topicName: initialTopicName, goa
 
   useEffect(() => {
     socket.on("session:started", (data: any) => {
-      setGameState("playing");
       if (countdownMinutes) startTimer(countdownMinutes * 60);
       if (data.round) {
         setRoundIndex(data.round.index);
         setTotalRounds(data.round.total);
         setGoalTasks(data.round.goalTasks);
+        setRoundType(data.round.type ?? "normal");
+        if (data.round.type === "demo") {
+          setGameState("waiting");
+        } else {
+          setGameState("playing");
+          requestQuestion();
+        }
+      } else {
+        setGameState("playing");
+        requestQuestion();
       }
-      requestQuestion();
     });
 
     socket.on("round:changed", (round: any) => {
-      // Teacher started next round — reset counters and start playing
       setRoundIndex(round.index);
       setTotalRounds(round.total);
       setGoalTasks(round.goalTasks);
+      setRoundType(round.type ?? "normal");
       setTopicName(round.topicName ?? topicName);
       setCorrectCount(0);
       setTotalCount(0);
       setFeedback(null);
       setSelected(null);
-      setGameState("playing");
-      requestQuestion();
+      if (round.type === "demo") {
+        setGameState("waiting");
+      } else {
+        setGameState("playing");
+        requestQuestion();
+      }
     });
 
     socket.on("session:ended", () => {
@@ -138,6 +153,18 @@ export default function StudentGame({ username, topicName: initialTopicName, goa
   }
 
   const progress = goalTasks ? Math.min(1, correctCount / goalTasks) : null;
+
+  // Demo round: show demo student view
+  if (roundType === "demo" && gameState !== "ended") {
+    return (
+      <DemoStudent
+        username={username}
+        topicName={topicName}
+        roundIndex={roundIndex}
+        totalRounds={totalRounds}
+      />
+    );
+  }
 
   return (
     <div className={s.container}>

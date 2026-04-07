@@ -4,7 +4,11 @@ import TeacherDashboard from "./pages/TeacherDashboard";
 import StudentGame from "./pages/StudentGame";
 import { socket } from "./socket";
 
-export interface RoundConfig { topicId: string; goalTasks: number }
+export interface RoundConfig {
+  type: "normal" | "demo";
+  topicId: string;
+  goalTasks?: number; // only for normal
+}
 
 export type AppView =
   | { page: "home" }
@@ -19,14 +23,11 @@ export default function App() {
       if (view.page !== "teacher") return;
       return new Promise<void>((resolve) => {
         socket.emit("teacher:restart_with_students", view.sessionId, (res: any) => {
-          if (res.newSessionId) {
-            setView({ ...view, sessionId: res.newSessionId, code: res.newCode });
-          }
+          if (res.newSessionId) setView({ ...view, sessionId: res.newSessionId, code: res.newCode });
           resolve();
         });
       });
     }
-
     return (
       <TeacherDashboard
         sessionId={view.sessionId}

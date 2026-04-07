@@ -131,8 +131,27 @@ input:focus, select:focus {
 }
 .removeRound:hover { background: #fee2e2; color: #dc2626; }
 
+.typeSelect {
+  border: 1.5px solid #e5e7eb;
+  border-radius: 0.4rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  font-weight: 700;
+  min-width: 5rem;
+}
+
+.roundRowDemo {
+  background: #fffbeb !important;
+  border-left: 3px solid #fbbf24;
+}
+
+.addRoundRow {
+  display: flex;
+  gap: 0.5rem;
+}
+
 .addRound {
-  align-self: flex-start;
   background: none;
   border: 2px dashed #d1d5db;
   border-radius: 0.5rem;
@@ -143,6 +162,18 @@ input:focus, select:focus {
   cursor: pointer;
 }
 .addRound:hover { border-color: #2563eb; color: #2563eb; }
+
+.addRoundDemo {
+  background: none;
+  border: 2px dashed #fcd34d;
+  border-radius: 0.5rem;
+  padding: 0.4rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #92400e;
+  cursor: pointer;
+}
+.addRoundDemo:hover { border-color: #f59e0b; color: #78350f; }
 
 .row {
   display: grid;

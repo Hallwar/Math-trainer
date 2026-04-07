@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { socket } from "../socket";
 import type { RoundConfig } from "../App";
+import DemoMode from "./DemoMode";
 import s from "./TeacherDashboard.module.css";
 
 interface StudentStat {
@@ -11,7 +12,7 @@ interface WrongQuestion { question_text: string; correct_answer: number; error_c
 interface Stats {
   students: StudentStat[]; totalCorrect: number; doneCount: number;
   wrongQuestions: WrongQuestion[]; currentRound: number; totalRounds: number;
-  rounds: { topicId: string; goalTasks: number }[];
+  rounds: { type: "normal" | "demo"; topicId: string; goalTasks?: number }[];
 }
 
 interface Props {
@@ -114,10 +115,28 @@ export default function TeacherDashboard({ sessionId, code, topicLabel, countdow
   const currentRound = stats?.currentRound ?? 0;
   const totalRounds = stats?.totalRounds ?? 1;
   const currentGoal = stats?.rounds[currentRound]?.goalTasks;
+  const currentRoundType = stats?.rounds[currentRound]?.type ?? "normal";
   const currentTopicName = TOPIC_NAMES[stats?.rounds[currentRound]?.topicId ?? ""] ?? topicLabel;
   const doneCount = stats?.doneCount ?? 0;
   const allDone = students.length > 0 && doneCount === students.length;
   const isLastRound = currentRound >= totalRounds - 1;
+
+  // Show demo canvas when active and current round is demo type
+  if (status === "active" && currentRoundType === "demo") {
+    return (
+      <DemoMode
+        sessionId={sessionId}
+        topicName={currentTopicName}
+        roundIndex={currentRound}
+        totalRounds={totalRounds}
+        onNextRound={() => {
+          if (isLastRound) socket.emit("teacher:end", sessionId);
+          else socket.emit("teacher:next_round", sessionId);
+        }}
+        onEndSession={() => socket.emit("teacher:end", sessionId)}
+      />
+    );
+  }
 
   const wrongQuestions = stats?.wrongQuestions ?? [];
   const filteredErrors = wrongQuestions.filter((wq) => wq.error_count >= minErrors);
