@@ -44,7 +44,15 @@ export default function Home({ onNavigate }: { onNavigate: (v: AppView) => void 
       });
       const data = await res.json();
       const topicName = topics.find((t) => t.id === selectedTopic)?.name ?? "";
-      onNavigate({ page: "teacher", sessionId: data.sessionId, code: data.code, topicName });
+      onNavigate({
+        page: "teacher",
+        sessionId: data.sessionId,
+        code: data.code,
+        topicId: selectedTopic,
+        topicName,
+        goalTasks: goalTasks ? parseInt(goalTasks) : undefined,
+        countdownMinutes: countdown ? parseInt(countdown) : undefined,
+      });
     } catch {
       setError("Klarte ikke å opprette økt. Prøv igjen.");
     } finally {

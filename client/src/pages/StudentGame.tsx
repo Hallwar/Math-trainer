@@ -198,14 +198,53 @@ export default function StudentGame({ username, topicName, goalTasks, countdownM
         )}
 
         {gameState === "ended" && (
-          <div className={s.ended}>
-            <div className={s.celebrateEmoji}>✅</div>
-            <h2>Økten er avsluttet</h2>
-            <p>Du svarte riktig på <strong>{correctCount}</strong> av <strong>{totalCount}</strong> oppgaver.</p>
-            <button className={s.btnHome} onClick={onHome}>Tilbake til start</button>
-          </div>
+          <PauseScreen
+            username={username}
+            correct={correctCount}
+            total={totalCount}
+            onHome={onHome}
+          />
         )}
       </main>
+    </div>
+  );
+}
+
+function PauseScreen({ username, correct, total, onHome }: { username: string; correct: number; total: number; onHome: () => void }) {
+  const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+  const stars = pct >= 80 ? 3 : pct >= 60 ? 2 : pct >= 40 ? 1 : 0;
+  const messages = [
+    "Bra forsøkt! Øvelse gjør mester.",
+    "Ikke verst! Fortsett å øve.",
+    "Bra jobbet!",
+    "Strålende innsats!",
+  ];
+  return (
+    <div className={s.pauseScreen}>
+      <div className={s.pauseAvatar}>{username[0]}</div>
+      <h2 className={s.pauseName}>{username}</h2>
+      <div className={s.pauseStars}>
+        {[1, 2, 3].map((n) => (
+          <span key={n} className={n <= stars ? s.starOn : s.starOff}>★</span>
+        ))}
+      </div>
+      <p className={s.pauseMsg}>{messages[stars]}</p>
+      <div className={s.pauseStats}>
+        <div className={s.pauseStat}>
+          <span>{correct}</span>
+          <label>Rette svar</label>
+        </div>
+        <div className={s.pauseStat}>
+          <span>{total}</span>
+          <label>Totalt</label>
+        </div>
+        <div className={s.pauseStat}>
+          <span>{pct}%</span>
+          <label>Prosent</label>
+        </div>
+      </div>
+      <p className={s.pauseHint}>Spør læreren om ny kode for å spille igjen</p>
+      <button className={s.btnHome} onClick={onHome}>Tilbake til start</button>
     </div>
   );
 }

@@ -19,19 +19,25 @@ interface Props {
   sessionId: string;
   code: string;
   topicName: string;
+  goalTasks?: number;
+  countdownMinutes?: number;
+  onNewSession: () => Promise<void>;
   onHome: () => void;
 }
 
-export default function TeacherDashboard({ sessionId, code, topicName, onHome }: Props) {
+const TOP_N = 10;
+
+export default function TeacherDashboard({ sessionId, code, topicName, goalTasks, countdownMinutes, onNewSession, onHome }: Props) {
   const [status, setStatus] = useState<"waiting" | "active" | "ended">("waiting");
   const [students, setStudents] = useState<StudentStat[]>([]);
   const [totalCorrect, setTotalCorrect] = useState(0);
   const [wrongQuestions, setWrongQuestions] = useState<WrongQuestion[]>([]);
-  const [goalTasks, setGoalTasks] = useState<number | null>(null);
-  const [countdownMinutes, setCountdownMinutes] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [reviewMode, setReviewMode] = useState(false);
   const [reviewIndex, setReviewIndex] = useState(0);
+  const [minErrors, setMinErrors] = useState(1);
+  const [showAllErrors, setShowAllErrors] = useState(false);
+  const [newSessionLoading, setNewSessionLoading] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -43,8 +49,6 @@ export default function TeacherDashboard({ sessionId, code, topicName, onHome }:
       setStudents(data.students);
       setTotalCorrect(data.totalCorrect);
       setWrongQuestions(data.wrongQuestions);
-      setGoalTasks(data.session.goal_tasks);
-      setCountdownMinutes(data.session.countdown_minutes);
       if (data.session.status === "active" && data.session.countdown_minutes) {
         const elapsed = Math.floor(Date.now() / 1000) - data.session.started_at;
         const remaining = data.session.countdown_minutes * 60 - elapsed;
@@ -105,18 +109,29 @@ export default function TeacherDashboard({ sessionId, code, topicName, onHome }:
 
   function formatTime(secs: number) {
     const m = Math.floor(secs / 60).toString().padStart(2, "0");
-    const s = (secs % 60).toString().padStart(2, "0");
-    return `${m}:${s}`;
+    const sec = (secs % 60).toString().padStart(2, "0");
+    return `${m}:${sec}`;
+  }
+
+  async function handleNewSession() {
+    setNewSessionLoading(true);
+    await onNewSession();
   }
 
   const sortedStudents = [...students].sort((a, b) => b.correct - a.correct);
-  const currentWrong = wrongQuestions[reviewIndex];
+  const filteredErrors = wrongQuestions.filter((wq) => wq.error_count >= minErrors);
+  const visibleErrors = showAllErrors ? filteredErrors : filteredErrors.slice(0, TOP_N);
+  const hiddenCount = filteredErrors.length - TOP_N;
+
+  // ── Review mode ────────────────────────────────────────────────────────────
+  const reviewList = wrongQuestions.filter((wq) => wq.error_count >= minErrors);
+  const currentWrong = reviewList[reviewIndex];
 
   if (reviewMode) {
     return (
       <div className={s.container}>
         <div className={s.reviewBar}>
-          <span>Gjennomgang av feil ({reviewIndex + 1}/{wrongQuestions.length})</span>
+          <span>Gjennomgang av feil ({reviewIndex + 1}/{reviewList.length})</span>
           <button className={s.btnSecondary} onClick={() => setReviewMode(false)}>Tilbake</button>
         </div>
         {currentWrong ? (
@@ -126,7 +141,7 @@ export default function TeacherDashboard({ sessionId, code, topicName, onHome }:
             <div className={s.reviewAnswer}>Svar: <strong>{currentWrong.correct_answer}</strong></div>
             <div className={s.reviewNav}>
               <button className={s.btnSecondary} disabled={reviewIndex === 0} onClick={() => setReviewIndex((i) => i - 1)}>← Forrige</button>
-              <button className={s.btnPrimary} disabled={reviewIndex === wrongQuestions.length - 1} onClick={() => setReviewIndex((i) => i + 1)}>Neste →</button>
+              <button className={s.btnPrimary} disabled={reviewIndex === reviewList.length - 1} onClick={() => setReviewIndex((i) => i + 1)}>Neste →</button>
             </div>
           </div>
         ) : (
@@ -136,6 +151,7 @@ export default function TeacherDashboard({ sessionId, code, topicName, onHome }:
     );
   }
 
+  // ── Main view ──────────────────────────────────────────────────────────────
   return (
     <div className={s.container}>
       <header className={s.header}>
@@ -172,7 +188,9 @@ export default function TeacherDashboard({ sessionId, code, topicName, onHome }:
           </div>
         )}
         <div className={s.statCard}>
-          <span className={`${s.statusBadge} ${s[status]}`}>{status === "waiting" ? "Venter" : status === "active" ? "Aktiv" : "Avsluttet"}</span>
+          <span className={`${s.statusBadge} ${s[status]}`}>
+            {status === "waiting" ? "Venter" : status === "active" ? "Aktiv" : "Avsluttet"}
+          </span>
           <label>Status</label>
         </div>
       </div>
@@ -194,6 +212,19 @@ export default function TeacherDashboard({ sessionId, code, topicName, onHome }:
         <button className={s.btnEnd} onClick={() => socket.emit("teacher:end", sessionId)}>
           Avslutt økt
         </button>
+      )}
+
+      {status === "ended" && (
+        <div className={s.endedActions}>
+          <p className={s.endedLabel}>Økten er avsluttet</p>
+          <button
+            className={s.btnStart}
+            onClick={handleNewSession}
+            disabled={newSessionLoading}
+          >
+            {newSessionLoading ? "Oppretter..." : "Ny økt – samme tema"}
+          </button>
+        </div>
       )}
 
       <div className={s.grid}>
@@ -240,35 +271,62 @@ export default function TeacherDashboard({ sessionId, code, topicName, onHome }:
         <section className={s.panel}>
           <div className={s.panelHeader}>
             <h2>Vanlige feil</h2>
-            {status === "ended" && wrongQuestions.length > 0 && (
+            {status === "ended" && reviewList.length > 0 && (
               <button className={s.btnReview} onClick={() => { setReviewMode(true); setReviewIndex(0); }}>
                 Gå igjennom på tavla →
               </button>
             )}
           </div>
-          {wrongQuestions.length === 0 ? (
-            <p className={s.empty}>Ingen feil ennå</p>
-          ) : (
-            <table className={s.table}>
-              <thead>
-                <tr>
-                  <th>Oppgave</th>
-                  <th>Svar</th>
-                  <th>Feil</th>
-                </tr>
-              </thead>
-              <tbody>
-                {wrongQuestions.slice(0, 15).map((wq, i) => (
-                  <tr key={i}>
-                    <td>{wq.question_text}</td>
-                    <td className={s.correct}>{wq.correct_answer}</td>
-                    <td>
-                      <span className={s.errorBadge}>{wq.error_count}</span>
-                    </td>
-                  </tr>
+
+          <div className={s.filterRow}>
+            <label className={s.filterLabel}>
+              Vis kun feil gjort av minst
+              <select
+                value={minErrors}
+                onChange={(e) => { setMinErrors(Number(e.target.value)); setShowAllErrors(false); }}
+                className={s.filterSelect}
+              >
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <option key={n} value={n}>{n} elev{n !== 1 ? "er" : ""}</option>
                 ))}
-              </tbody>
-            </table>
+              </select>
+            </label>
+            <span className={s.filterCount}>{filteredErrors.length} oppgaver</span>
+          </div>
+
+          {filteredErrors.length === 0 ? (
+            <p className={s.empty}>Ingen feil med dette filteret</p>
+          ) : (
+            <>
+              <table className={s.table}>
+                <thead>
+                  <tr>
+                    <th>Oppgave</th>
+                    <th>Svar</th>
+                    <th>Feil</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleErrors.map((wq, i) => (
+                    <tr key={i}>
+                      <td>{wq.question_text}</td>
+                      <td className={s.correct}>{wq.correct_answer}</td>
+                      <td><span className={s.errorBadge}>{wq.error_count}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!showAllErrors && hiddenCount > 0 && (
+                <button className={s.showMoreBtn} onClick={() => setShowAllErrors(true)}>
+                  Vis alle ({hiddenCount} til) ↓
+                </button>
+              )}
+              {showAllErrors && filteredErrors.length > TOP_N && (
+                <button className={s.showMoreBtn} onClick={() => setShowAllErrors(false)}>
+                  Vis færre ↑
+                </button>
+              )}
+            </>
           )}
         </section>
       </div>

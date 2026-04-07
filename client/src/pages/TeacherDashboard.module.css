@@ -193,6 +193,63 @@
 
 .empty { color: #9ca3af; font-size: 0.9rem; text-align: center; padding: 1rem 0; }
 
+.endedActions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: #f0fdf4;
+  border: 2px solid #bbf7d0;
+  border-radius: 1rem;
+  padding: 1rem 1.5rem;
+}
+.endedLabel {
+  color: #6b7280;
+  font-weight: 600;
+  flex: 1;
+}
+
+.filterRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.filterLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+}
+.filterSelect {
+  border: 1.5px solid #e5e7eb;
+  border-radius: 0.4rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+.filterCount {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+.showMoreBtn {
+  width: 100%;
+  margin-top: 0.5rem;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+}
+.showMoreBtn:hover { background: #e5e7eb; }
+
 .homeBtn {
   align-self: flex-start;
   background: #f3f4f6;
