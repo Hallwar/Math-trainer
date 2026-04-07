@@ -212,6 +212,44 @@ io.on("connection", (socket) => {
     callback({ newSessionId: newId, newCode });
   });
 
+  // Student rejoins existing session (from localStorage)
+  socket.on("student:rejoin", ({ studentId, sessionId }: { studentId: string; sessionId: string }, callback: (res: any) => void) => {
+    const session = db.prepare("SELECT * FROM sessions WHERE id = ?").get(sessionId) as any;
+    if (!session || session.status === "ended") return callback({ error: "Økten er avsluttet" });
+    const student = db.prepare("SELECT * FROM students WHERE id = ? AND session_id = ?").get(studentId, sessionId) as any;
+    if (!student) return callback({ error: "Fant ikke brukeren" });
+
+    db.prepare("UPDATE students SET socket_id = ? WHERE id = ?").run(socket.id, studentId);
+    socket.join(`session:${sessionId}`);
+    socket.data.studentId = studentId;
+    socket.data.sessionId = sessionId;
+
+    const rounds = parseRounds(session.rounds);
+    const currentRound: number = session.current_round;
+
+    // How many correct answers has this student given this round?
+    const roundCorrect = (db.prepare(
+      "SELECT COUNT(*) as n FROM answers WHERE student_id = ? AND round_index = ? AND is_correct = 1"
+    ).get(studentId, currentRound) as any).n;
+
+    io.to(`session:${sessionId}`).emit("student:joined", { id: studentId, username: student.username });
+
+    callback({
+      ok: true,
+      studentId,
+      username: student.username,
+      sessionId,
+      status: session.status,
+      currentRound,
+      totalRounds: rounds.length,
+      topicName: TOPICS.find((t) => t.id === rounds[currentRound]?.topicId)?.name ?? "",
+      topicType: rounds[currentRound]?.type ?? "normal",
+      goalTasks: rounds[currentRound]?.goalTasks ?? null,
+      countdownMinutes: session.countdown_minutes,
+      roundCorrect,
+    });
+  });
+
   // Student joins by code
   socket.on("student:join", ({ code }: { code: string }, callback: (res: any) => void) => {
     const session = db.prepare("SELECT * FROM sessions WHERE code = ?").get(code) as any;
@@ -251,8 +289,10 @@ io.on("connection", (socket) => {
       currentRound,
       totalRounds: rounds.length,
       topicName: TOPICS.find((t) => t.id === rounds[currentRound]?.topicId)?.name ?? "",
+      topicType: rounds[currentRound]?.type ?? "normal",
       goalTasks: rounds[currentRound]?.goalTasks ?? null,
       countdownMinutes: session.countdown_minutes,
+      roundCorrect: 0,
     });
   });
 

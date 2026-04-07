@@ -12,18 +12,19 @@ interface Props {
   sessionId: string; studentId: string; username: string;
   topicName: string; goalTasks?: number; countdownMinutes?: number;
   currentRound: number; totalRounds: number;
+  initialCorrect?: number;
   onHome: () => void;
 }
 
 type GameState = "waiting" | "playing" | "answered" | "round_complete" | "ended";
 type RoundType = "normal" | "demo";
 
-export default function StudentGame({ username, topicName: initialTopicName, goalTasks: initialGoal, countdownMinutes, currentRound: initialRound, totalRounds: initialTotal, onHome }: Props) {
+export default function StudentGame({ username, topicName: initialTopicName, goalTasks: initialGoal, countdownMinutes, currentRound: initialRound, totalRounds: initialTotal, initialCorrect = 0, onHome }: Props) {
   const [gameState, setGameState] = useState<GameState>("waiting");
   const [roundType, setRoundType] = useState<RoundType>("normal");
   const [question, setQuestion] = useState<Question | null>(null);
   const [feedback, setFeedback] = useState<{ isCorrect: boolean; correctAnswer: number } | null>(null);
-  const [correctCount, setCorrectCount] = useState(0);
+  const [correctCount, setCorrectCount] = useState(initialCorrect);
   const [totalCount, setTotalCount] = useState(0);
   const [timeLeft, setTimeLeft] = useState<number | null>(countdownMinutes ? countdownMinutes * 60 : null);
   const [selected, setSelected] = useState<number | null>(null);
@@ -98,7 +99,6 @@ export default function StudentGame({ username, topicName: initialTopicName, goa
     });
 
     socket.on("session:restarted", () => {
-      // Teacher started new session with same students
       setCorrectCount(0);
       setTotalCount(0);
       setRoundIndex(0);
@@ -107,6 +107,12 @@ export default function StudentGame({ username, topicName: initialTopicName, goa
       setQuestion(null);
       setGameState("waiting");
     });
+
+    // If we rejoin an already-active session, start playing immediately
+    if (initialCorrect > 0) {
+      setGameState("playing");
+      requestQuestion();
+    }
 
     return () => {
       ["session:started","round:changed","session:ended","answer:result","round:complete","session:restarted"]

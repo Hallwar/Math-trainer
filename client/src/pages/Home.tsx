@@ -6,7 +6,7 @@ import s from "./Home.module.css";
 interface Topic { id: string; name: string; description: string; grade: string }
 interface RoundConfig { type: "normal" | "demo"; topicId: string; goalTasks: string }
 
-export default function Home({ onNavigate }: { onNavigate: (v: AppView) => void }) {
+export default function Home({ onNavigate, resumeError }: { onNavigate: (v: AppView) => void; resumeError?: string }) {
   const [mode, setMode] = useState<"choose" | "teacher" | "student">("choose");
   const [topics, setTopics] = useState<Topic[]>([]);
   const [rounds, setRounds] = useState<RoundConfig[]>([{ type: "normal", topicId: "", goalTasks: "" }]);
@@ -87,6 +87,7 @@ export default function Home({ onNavigate }: { onNavigate: (v: AppView) => void 
       onNavigate({
         page: "student",
         sessionId: res.sessionId,
+        roundCorrect: res.roundCorrect ?? 0,
         studentId: res.studentId,
         username: res.username,
         topicName: res.topicName,
