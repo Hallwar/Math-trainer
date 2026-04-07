@@ -7,6 +7,7 @@ interface Question {
   text: string;
   answer: number;
   options?: number[];
+  optionLabels?: string[];
 }
 
 interface Props {
@@ -156,7 +157,7 @@ export default function StudentGame({ username, topicName, goalTasks, countdownM
             <p className={s.questionText}>{question.text}</p>
             {question.options ? (
               <div className={s.options}>
-                {question.options.map((opt) => {
+                {question.options.map((opt, i) => {
                   let cls = s.option;
                   if (gameState === "answered") {
                     if (opt === question.answer) cls = `${s.option} ${s.optionCorrect}`;
@@ -164,6 +165,7 @@ export default function StudentGame({ username, topicName, goalTasks, countdownM
                   } else if (opt === selected) {
                     cls = `${s.option} ${s.optionSelected}`;
                   }
+                  const label = question.optionLabels ? question.optionLabels[i] : String(opt);
                   return (
                     <button
                       key={opt}
@@ -171,7 +173,7 @@ export default function StudentGame({ username, topicName, goalTasks, countdownM
                       onClick={() => submitAnswer(opt)}
                       disabled={gameState === "answered"}
                     >
-                      {opt}
+                      {label}
                     </button>
                   );
                 })}
