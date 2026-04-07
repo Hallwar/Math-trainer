@@ -2,6 +2,9 @@
   "name": "math-trainer",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "cd client && npm install && npm run build && cd ../server && npm install && npm run build",
     "start": "cd server && node dist/index.js",
