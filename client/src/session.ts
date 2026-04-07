@@ -46,11 +46,59 @@ export function clearTeacher() {
   localStorage.removeItem(TEACHER_KEY);
 }
 
+// ── History ───────────────────────────────────────────────────────────────────
+const HISTORY_KEY = "math_trainer_history";
+const MAX_HISTORY = 30;
+
+export interface HistoryRound {
+  type: "normal" | "demo" | "poll";
+  topicId: string;
+  topicName: string;
+  goalTasks?: number;
+  answerMode?: "multiple_choice" | "input";
+  totalCorrect: number;
+  wrongQuestions: { question_text: string; correct_answer: number; error_count: number }[];
+}
+
+export interface HistorySession {
+  id: string;
+  endedAt: number;
+  topicLabel: string;
+  countdownMinutes?: number;
+  studentCount: number;
+  totalCorrect: number;
+  rounds: HistoryRound[];
+  students: { username: string; allCorrect: number }[];
+}
+
+export function loadHistory(): HistorySession[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+export function saveHistory(session: HistorySession) {
+  const history = loadHistory();
+  history.unshift(session);
+  if (history.length > MAX_HISTORY) history.splice(MAX_HISTORY);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+export function deleteHistory(id: string) {
+  const history = loadHistory().filter((h) => h.id !== id);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+export function clearHistory() {
+  localStorage.removeItem(HISTORY_KEY);
+}
+
 // ── Templates ─────────────────────────────────────────────────────────────────
 export interface SessionTemplate {
   id: string;
   name: string;
-  rounds: { type: "normal" | "demo"; topicId: string; goalTasks?: number }[];
+  rounds: { type: "normal" | "demo" | "poll"; topicId: string; goalTasks?: number; answerMode?: "multiple_choice" | "input" }[];
   countdownMinutes?: number;
   createdAt: number;
 }

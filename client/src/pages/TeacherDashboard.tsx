@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { socket } from "../socket";
 import type { RoundConfig } from "../App";
 import DemoMode from "./DemoMode";
+import PollMode from "./PollMode";
+import { saveHistory } from "../session";
 import s from "./TeacherDashboard.module.css";
 
 interface StudentStat {
@@ -12,7 +14,7 @@ interface WrongQuestion { question_text: string; correct_answer: number; error_c
 interface Stats {
   students: StudentStat[]; totalCorrect: number; doneCount: number;
   wrongQuestions: WrongQuestion[]; currentRound: number; totalRounds: number;
-  rounds: { type: "normal" | "demo"; topicId: string; goalTasks?: number }[];
+  rounds: { type: "normal" | "demo" | "poll"; topicId: string; goalTasks?: number }[];
 }
 
 interface Props {
@@ -74,6 +76,29 @@ export default function TeacherDashboard({ sessionId, code, topicLabel, countdow
       setStats(data);
       setStudents(data.students);
       if (timerRef.current) clearInterval(timerRef.current);
+
+      // Auto-save to history
+      saveHistory({
+        id: sessionId + "_" + Date.now(),
+        endedAt: Date.now(),
+        topicLabel,
+        countdownMinutes,
+        studentCount: data.students.length,
+        totalCorrect: data.totalCorrect,
+        rounds: (data.rounds ?? []).map((r: any, i: number) => {
+          // Collect per-round wrong questions from stats if available
+          const roundWrong = i === data.currentRound ? data.wrongQuestions : [];
+          return {
+            type: r.type ?? "normal",
+            topicId: r.topicId,
+            topicName: TOPIC_NAMES[r.topicId] ?? r.topicId,
+            goalTasks: r.goalTasks,
+            totalCorrect: i === data.currentRound ? data.totalCorrect : 0,
+            wrongQuestions: roundWrong,
+          };
+        }),
+        students: data.students.map((s: any) => ({ username: s.username, allCorrect: s.allCorrect })),
+      });
     });
 
     socket.on("stats:update", (data: any) => {
@@ -125,6 +150,23 @@ export default function TeacherDashboard({ sessionId, code, topicLabel, countdow
   if (status === "active" && currentRoundType === "demo") {
     return (
       <DemoMode
+        sessionId={sessionId}
+        topicName={currentTopicName}
+        roundIndex={currentRound}
+        totalRounds={totalRounds}
+        onNextRound={() => {
+          if (isLastRound) socket.emit("teacher:end", sessionId);
+          else socket.emit("teacher:next_round", sessionId);
+        }}
+        onEndSession={() => socket.emit("teacher:end", sessionId)}
+      />
+    );
+  }
+
+  // Show poll panel when active and current round is poll type
+  if (status === "active" && currentRoundType === "poll") {
+    return (
+      <PollMode
         sessionId={sessionId}
         topicName={currentTopicName}
         roundIndex={currentRound}

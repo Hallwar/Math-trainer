@@ -5,12 +5,12 @@ import { loadTemplates, saveTemplate, deleteTemplate, type SessionTemplate } fro
 import s from "./Home.module.css";
 
 interface Topic { id: string; name: string; description: string; grade: string }
-interface RoundConfig { type: "normal" | "demo"; topicId: string; goalTasks: string }
+interface RoundConfig { type: "normal" | "demo" | "poll"; topicId: string; goalTasks: string; answerMode: "multiple_choice" | "input" }
 
-export default function Home({ onNavigate, resumeError }: { onNavigate: (v: AppView) => void; resumeError?: string }) {
+export default function Home({ onNavigate, onHistory, resumeError }: { onNavigate: (v: AppView) => void; onHistory: () => void; resumeError?: string }) {
   const [mode, setMode] = useState<"choose" | "teacher" | "student">("choose");
   const [topics, setTopics] = useState<Topic[]>([]);
-  const [rounds, setRounds] = useState<RoundConfig[]>([{ type: "normal", topicId: "", goalTasks: "" }]);
+  const [rounds, setRounds] = useState<RoundConfig[]>([{ type: "normal", topicId: "", goalTasks: "", answerMode: "multiple_choice" }]);
   const [countdown, setCountdown] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -23,7 +23,7 @@ export default function Home({ onNavigate, resumeError }: { onNavigate: (v: AppV
     const res = await fetch("/api/topics");
     const data: Topic[] = await res.json();
     setTopics(data);
-    setRounds([{ type: "normal", topicId: data[0]?.id ?? "", goalTasks: "" }]);
+    setRounds([{ type: "normal", topicId: data[0]?.id ?? "", goalTasks: "", answerMode: "multiple_choice" }]);
     setTemplates(loadTemplates());
     setMode("teacher");
   }
@@ -32,8 +32,8 @@ export default function Home({ onNavigate, resumeError }: { onNavigate: (v: AppV
     setRounds((prev) => prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r));
   }
 
-  function addRound(type: "normal" | "demo" = "normal") {
-    setRounds((prev) => [...prev, { type, topicId: topics[0]?.id ?? "", goalTasks: "" }]);
+  function addRound(type: "normal" | "demo" | "poll" = "normal") {
+    setRounds((prev) => [...prev, { type, topicId: topics[0]?.id ?? "", goalTasks: "", answerMode: "multiple_choice" }]);
   }
 
   function removeRound(i: number) {
@@ -45,6 +45,7 @@ export default function Home({ onNavigate, resumeError }: { onNavigate: (v: AppV
       type: r.type,
       topicId: r.topicId,
       goalTasks: r.goalTasks?.toString() ?? "",
+      answerMode: r.answerMode ?? "multiple_choice",
     })));
     setCountdown(t.countdownMinutes?.toString() ?? "");
   }
@@ -58,6 +59,7 @@ export default function Home({ onNavigate, resumeError }: { onNavigate: (v: AppV
         type: r.type,
         topicId: r.topicId,
         goalTasks: r.type === "normal" ? parseInt(r.goalTasks) || undefined : undefined,
+        answerMode: r.type === "normal" ? r.answerMode : undefined,
       })),
       countdownMinutes: countdown ? parseInt(countdown) : undefined,
     });
@@ -76,16 +78,17 @@ export default function Home({ onNavigate, resumeError }: { onNavigate: (v: AppV
   }
 
   function templateSummary(t: SessionTemplate) {
-    return t.rounds.map((r, i) =>
-      `R${i + 1}: ${r.type === "demo" ? "Tavle – " : ""}${topicName(r.topicId)}${r.goalTasks ? ` (${r.goalTasks})` : ""}`
-    ).join(" · ");
+    return t.rounds.map((r, i) => {
+      const prefix = r.type === "demo" ? "Tavle" : r.type === "poll" ? "Avstemming" : r.answerMode === "input" ? "Innskrivning" : "Flervalg";
+      return `R${i + 1}: ${prefix} – ${topicName(r.topicId)}${r.goalTasks ? ` (${r.goalTasks})` : ""}`;
+    }).join(" · ");
   }
 
   async function createSession() {
     for (const r of rounds) {
       if (!r.topicId) { setError("Velg tema for alle runder"); return; }
       if (r.type === "normal" && (!r.goalTasks || parseInt(r.goalTasks) < 1)) {
-        setError("Sett et mål (min. 1) for alle vanlige runder"); return;
+        setError("Sett et mål (min. 1) for alle øvingsrunder"); return;
       }
     }
     setLoading(true);
@@ -99,6 +102,7 @@ export default function Home({ onNavigate, resumeError }: { onNavigate: (v: AppV
             type: r.type,
             topicId: r.topicId,
             goalTasks: r.type === "normal" ? parseInt(r.goalTasks) : undefined,
+            answerMode: r.type === "normal" ? r.answerMode : undefined,
           })),
           countdownMinutes: countdown ? parseInt(countdown) : undefined,
         }),
@@ -111,7 +115,7 @@ export default function Home({ onNavigate, resumeError }: { onNavigate: (v: AppV
         page: "teacher",
         sessionId: data.sessionId,
         code: data.code,
-        rounds: rounds.map((r) => ({ type: r.type, topicId: r.topicId, goalTasks: r.type === "normal" ? parseInt(r.goalTasks) : undefined })),
+        rounds: rounds.map((r) => ({ type: r.type, topicId: r.topicId, goalTasks: r.type === "normal" ? parseInt(r.goalTasks) : undefined, answerMode: r.type === "normal" ? r.answerMode : undefined })),
         topicLabel: label,
         countdownMinutes: countdown ? parseInt(countdown) : undefined,
       });
@@ -154,18 +158,21 @@ export default function Home({ onNavigate, resumeError }: { onNavigate: (v: AppV
       </header>
 
       {mode === "choose" && (
-        <div className={s.cards}>
-          <button className={s.card} onClick={loadTopics}>
-            <div className={s.cardIcon}>👩‍🏫</div>
-            <h2>Jeg er lærer</h2>
-            <p>Opprett en ny økt og inviter elevene</p>
-          </button>
-          <button className={s.card} onClick={() => setMode("student")}>
-            <div className={s.cardIcon}>🎒</div>
-            <h2>Jeg er elev</h2>
-            <p>Skriv inn koden fra læreren</p>
-          </button>
-        </div>
+        <>
+          <div className={s.cards}>
+            <button className={s.card} onClick={loadTopics}>
+              <div className={s.cardIcon}>👩‍🏫</div>
+              <h2>Jeg er lærer</h2>
+              <p>Opprett en ny økt og inviter elevene</p>
+            </button>
+            <button className={s.card} onClick={() => setMode("student")}>
+              <div className={s.cardIcon}>🎒</div>
+              <h2>Jeg er elev</h2>
+              <p>Skriv inn koden fra læreren</p>
+            </button>
+          </div>
+          <button className={s.historyBtn} onClick={onHistory}>Tidligere økter →</button>
+        </>
       )}
 
       {mode === "teacher" && (
@@ -198,12 +205,19 @@ export default function Home({ onNavigate, resumeError }: { onNavigate: (v: AppV
           {/* Rounds */}
           <div className={s.roundsList}>
             {rounds.map((r, i) => (
-              <div key={i} className={`${s.roundRow} ${r.type === "demo" ? s.roundRowDemo : ""}`}>
+              <div key={i} className={`${s.roundRow} ${r.type === "demo" ? s.roundRowDemo : r.type === "poll" ? s.roundRowPoll : ""}`}>
                 <span className={s.roundNum}>Runde {i + 1}</span>
                 <select value={r.type} onChange={(e) => updateRound(i, "type", e.target.value)} className={s.typeSelect}>
                   <option value="normal">Øving</option>
                   <option value="demo">Tavle</option>
+                  <option value="poll">Avstemming</option>
                 </select>
+                {r.type === "normal" && (
+                  <select value={r.answerMode} onChange={(e) => updateRound(i, "answerMode", e.target.value)} className={s.answerModeSelect}>
+                    <option value="multiple_choice">Flervalg</option>
+                    <option value="input">Innskrivning</option>
+                  </select>
+                )}
                 <select value={r.topicId} onChange={(e) => updateRound(i, "topicId", e.target.value)} className={s.roundSelect}>
                   {topics.map((t) => (
                     <option key={t.id} value={t.id}>{t.name} — {t.grade}</option>
@@ -228,8 +242,9 @@ export default function Home({ onNavigate, resumeError }: { onNavigate: (v: AppV
           </div>
 
           <div className={s.addRoundRow}>
-            <button className={s.addRound} onClick={() => addRound("normal")}>+ Øvingsrunde</button>
-            <button className={s.addRoundDemo} onClick={() => addRound("demo")}>+ Tavlerunde</button>
+            <button className={s.addRound} onClick={() => addRound("normal")}>+ Øving</button>
+            <button className={s.addRoundDemo} onClick={() => addRound("demo")}>+ Tavle</button>
+            <button className={s.addRoundPoll} onClick={() => addRound("poll")}>+ Avstemming</button>
           </div>
 
           <label>
@@ -288,8 +303,8 @@ export default function Home({ onNavigate, resumeError }: { onNavigate: (v: AppV
             <div className={s.modalSummary}>
               {rounds.map((r, i) => (
                 <div key={i} className={s.modalRoundLine}>
-                  <span className={r.type === "demo" ? s.tagDemo : s.tagNormal}>
-                    {r.type === "demo" ? "Tavle" : "Øving"}
+                  <span className={r.type === "demo" ? s.tagDemo : r.type === "poll" ? s.tagPoll : s.tagNormal}>
+                    {r.type === "demo" ? "Tavle" : r.type === "poll" ? "Avstemming" : r.answerMode === "input" ? "Innskrivning" : "Flervalg"}
                   </span>
                   {topics.find((t) => t.id === r.topicId)?.name}
                   {r.type === "normal" && r.goalTasks && <span className={s.modalGoal}>– mål {r.goalTasks}</span>}

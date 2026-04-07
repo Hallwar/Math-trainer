@@ -24,7 +24,16 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: "*" } });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-interface Round { type: "normal" | "demo"; topicId: string; goalTasks?: number }
+interface Round { type: "normal" | "demo" | "poll"; topicId: string; goalTasks?: number; answerMode?: "multiple_choice" | "input" }
+
+// ─── Poll state ───────────────────────────────────────────────────────────────
+interface PollState {
+  question: { id: string; text: string; answer: number; options: number[]; optionLabels?: string[] };
+  votes: number[];
+  voterIds: Set<string>;
+  revealed: boolean;
+}
+const pollSessions = new Map<string, PollState>();
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function parseRounds(json: string): Round[] {
@@ -146,6 +155,7 @@ io.on("connection", (socket) => {
     const nextIndex = session.current_round + 1;
     if (nextIndex >= rounds.length) return;
     db.prepare("UPDATE sessions SET current_round = ? WHERE id = ?").run(nextIndex, sessionId);
+    pollSessions.delete(sessionId);
     io.to(`session:${sessionId}`).emit("round:changed", {
       index: nextIndex,
       total: rounds.length,
@@ -176,6 +186,7 @@ io.on("connection", (socket) => {
   // Teacher ends session
   socket.on("teacher:end", (sessionId: string) => {
     db.prepare("UPDATE sessions SET status = 'ended', ended_at = unixepoch() WHERE id = ?").run(sessionId);
+    pollSessions.delete(sessionId);
     const stats = getSessionStats(sessionId);
     io.to(`session:${sessionId}`).emit("session:ended", stats);
   });
@@ -296,6 +307,67 @@ io.on("connection", (socket) => {
     });
   });
 
+  // Teacher issues poll question
+  socket.on("teacher:poll_question", (sessionId: string, callback: (q: any) => void) => {
+    const session = db.prepare("SELECT * FROM sessions WHERE id = ?").get(sessionId) as any;
+    if (!session || session.status !== "active") return;
+    const rounds = parseRounds(session.rounds);
+    const topic = TOPICS.find((t) => t.id === rounds[session.current_round]?.topicId);
+    if (!topic) return;
+    const q = topic.generate();
+    if (!q.options?.length) return;
+    pollSessions.set(sessionId, {
+      question: q,
+      votes: new Array(q.options.length).fill(0),
+      voterIds: new Set(),
+      revealed: false,
+    });
+    const { answer, ...qForStudents } = q;
+    socket.to(`session:${sessionId}`).emit("poll:question", qForStudents);
+    callback(q);
+  });
+
+  // Teacher reveals poll answer
+  socket.on("teacher:poll_reveal", (sessionId: string) => {
+    const state = pollSessions.get(sessionId);
+    if (!state) return;
+    state.revealed = true;
+    io.to(`session:${sessionId}`).emit("poll:reveal", {
+      correctAnswer: state.question.answer,
+      votes: state.votes,
+      total: state.voterIds.size,
+      options: state.question.options,
+      optionLabels: state.question.optionLabels,
+    });
+  });
+
+  // Student submits poll vote
+  socket.on("student:poll_answer", ({ questionId, optionIndex, givenAnswer }: { questionId: string; optionIndex: number; givenAnswer: number }) => {
+    const { studentId, sessionId } = socket.data;
+    if (!studentId || !sessionId) return;
+    const state = pollSessions.get(sessionId);
+    if (!state || state.revealed || state.question.id !== questionId) return;
+    if (state.voterIds.has(studentId)) return;
+    state.voterIds.add(studentId);
+    if (optionIndex >= 0 && optionIndex < state.votes.length) state.votes[optionIndex]++;
+    const session = db.prepare("SELECT * FROM sessions WHERE id = ?").get(sessionId) as any;
+    if (session) {
+      const isCorrect = givenAnswer === state.question.answer ? 1 : 0;
+      db.prepare(`INSERT INTO answers (id, student_id, session_id, round_index, question_id, question_text, correct_answer, given_answer, is_correct) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(makeId(), studentId, sessionId, session.current_round, questionId, state.question.text, state.question.answer, givenAnswer, isCorrect);
+    }
+    const studentCount = (db.prepare("SELECT COUNT(*) as n FROM students WHERE session_id = ?").get(sessionId) as any).n;
+    io.to(`session:${sessionId}`).emit("poll:votes", {
+      votes: state.votes,
+      total: state.voterIds.size,
+      studentCount,
+      options: state.question.options,
+      optionLabels: state.question.optionLabels,
+    });
+    const stats = getSessionStats(sessionId);
+    io.to(`session:${sessionId}`).emit("stats:update", stats);
+  });
+
   // Student requests next question
   socket.on("student:next_question", (_: any, callback: (q: any) => void) => {
     const { sessionId } = socket.data;
@@ -305,7 +377,14 @@ io.on("connection", (socket) => {
     const rounds = parseRounds(session.rounds);
     const topic = TOPICS.find((t) => t.id === rounds[session.current_round]?.topicId);
     if (!topic) return;
-    callback(topic.generate());
+    const q = topic.generate();
+    const answerMode = rounds[session.current_round]?.answerMode ?? "multiple_choice";
+    if (answerMode === "input") {
+      const { options: _o, optionLabels: _ol, ...rest } = q;
+      callback(rest);
+    } else {
+      callback(q);
+    }
   });
 
   // Student submits answer

@@ -309,6 +309,42 @@ input:focus, select:focus {
 }
 .addRoundDemo:hover { border-color: #f59e0b; color: #78350f; }
 
+.addRoundPoll {
+  background: none;
+  border: 2px dashed #c4b5fd;
+  border-radius: 0.5rem;
+  padding: 0.4rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #6d28d9;
+  cursor: pointer;
+}
+.addRoundPoll:hover { border-color: #7c3aed; color: #5b21b6; }
+
+.roundRowPoll {
+  background: #f5f3ff !important;
+  border-left: 3px solid #7c3aed;
+}
+
+.answerModeSelect {
+  border: 1.5px solid #e5e7eb;
+  border-radius: 0.4rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  font-weight: 600;
+  min-width: 7rem;
+}
+
+.tagPoll {
+  background: #ede9fe;
+  color: #5b21b6;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 9999px;
+}
+
 .row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -353,3 +389,15 @@ input:focus, select:focus {
   transition: background 0.15s;
 }
 .btnSecondary:hover { background: #e5e7eb; }
+
+.historyBtn {
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0.25rem 0.5rem;
+}
+.historyBtn:hover { color: #2563eb; }

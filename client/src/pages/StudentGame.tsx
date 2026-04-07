@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { socket } from "../socket";
 import DemoStudent from "./DemoStudent";
+import PollStudent from "./PollStudent";
 import s from "./StudentGame.module.css";
 
 interface Question {
@@ -17,7 +18,7 @@ interface Props {
 }
 
 type GameState = "waiting" | "playing" | "answered" | "round_complete" | "ended";
-type RoundType = "normal" | "demo";
+type RoundType = "normal" | "demo" | "poll";
 
 export default function StudentGame({ username, topicName: initialTopicName, goalTasks: initialGoal, countdownMinutes, currentRound: initialRound, totalRounds: initialTotal, initialCorrect = 0, onHome }: Props) {
   const [gameState, setGameState] = useState<GameState>("waiting");
@@ -44,7 +45,7 @@ export default function StudentGame({ username, topicName: initialTopicName, goa
         setTotalRounds(data.round.total);
         setGoalTasks(data.round.goalTasks);
         setRoundType(data.round.type ?? "normal");
-        if (data.round.type === "demo") {
+        if (data.round.type === "demo" || data.round.type === "poll") {
           setGameState("waiting");
         } else {
           setGameState("playing");
@@ -66,7 +67,7 @@ export default function StudentGame({ username, topicName: initialTopicName, goa
       setTotalCount(0);
       setFeedback(null);
       setSelected(null);
-      if (round.type === "demo") {
+      if (round.type === "demo" || round.type === "poll") {
         setGameState("waiting");
       } else {
         setGameState("playing");
@@ -164,6 +165,18 @@ export default function StudentGame({ username, topicName: initialTopicName, goa
   if (roundType === "demo" && gameState !== "ended") {
     return (
       <DemoStudent
+        username={username}
+        topicName={topicName}
+        roundIndex={roundIndex}
+        totalRounds={totalRounds}
+      />
+    );
+  }
+
+  // Poll round: show poll student view
+  if (roundType === "poll" && gameState !== "ended") {
+    return (
+      <PollStudent
         username={username}
         topicName={topicName}
         roundIndex={roundIndex}

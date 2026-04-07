@@ -2,17 +2,20 @@ import { useEffect, useState } from "react";
 import Home from "./pages/Home";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import StudentGame from "./pages/StudentGame";
+import HistoryPage from "./pages/HistoryPage";
 import { socket } from "./socket";
 import { saveStudent, loadStudent, clearStudent, saveTeacher, loadTeacher, clearTeacher } from "./session";
 
 export interface RoundConfig {
-  type: "normal" | "demo";
+  type: "normal" | "demo" | "poll";
   topicId: string;
   goalTasks?: number;
+  answerMode?: "multiple_choice" | "input";
 }
 
 export type AppView =
   | { page: "home" }
+  | { page: "history" }
   | { page: "teacher"; sessionId: string; code: string; rounds: RoundConfig[]; topicLabel: string; countdownMinutes?: number }
   | { page: "student"; sessionId: string; studentId: string; username: string; topicName: string; goalTasks?: number; countdownMinutes?: number; currentRound: number; totalRounds: number; roundCorrect?: number };
 
@@ -140,5 +143,9 @@ export default function App() {
     );
   }
 
-  return <Home onNavigate={handleNavigate} resumeError={resumeError} />;
+  if (view.page === "history") {
+    return <HistoryPage onBack={() => setView({ page: "home" })} />;
+  }
+
+  return <Home onNavigate={handleNavigate} onHistory={() => setView({ page: "history" })} resumeError={resumeError} />;
 }
