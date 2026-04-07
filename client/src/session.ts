@@ -1,5 +1,6 @@
 const STUDENT_KEY = "math_trainer_student";
 const TEACHER_KEY = "math_trainer_teacher";
+const TEMPLATES_KEY = "math_trainer_templates";
 
 export interface SavedStudent {
   studentId: string;
@@ -43,4 +44,31 @@ export function loadTeacher(): SavedTeacher | null {
 
 export function clearTeacher() {
   localStorage.removeItem(TEACHER_KEY);
+}
+
+// ── Templates ─────────────────────────────────────────────────────────────────
+export interface SessionTemplate {
+  id: string;
+  name: string;
+  rounds: { type: "normal" | "demo"; topicId: string; goalTasks?: number }[];
+  countdownMinutes?: number;
+  createdAt: number;
+}
+
+export function loadTemplates(): SessionTemplate[] {
+  try {
+    const raw = localStorage.getItem(TEMPLATES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+export function saveTemplate(template: Omit<SessionTemplate, "id" | "createdAt">) {
+  const templates = loadTemplates();
+  templates.unshift({ ...template, id: Math.random().toString(36).slice(2), createdAt: Date.now() });
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
+}
+
+export function deleteTemplate(id: string) {
+  const templates = loadTemplates().filter((t) => t.id !== id);
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
 }
