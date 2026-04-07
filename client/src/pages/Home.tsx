@@ -3,18 +3,13 @@ import type { AppView } from "../App";
 import { socket } from "../socket";
 import s from "./Home.module.css";
 
-interface Topic {
-  id: string;
-  name: string;
-  description: string;
-  grade: string;
-}
+interface Topic { id: string; name: string; description: string; grade: string }
+interface RoundConfig { topicId: string; goalTasks: string }
 
 export default function Home({ onNavigate }: { onNavigate: (v: AppView) => void }) {
   const [mode, setMode] = useState<"choose" | "teacher" | "student">("choose");
   const [topics, setTopics] = useState<Topic[]>([]);
-  const [selectedTopic, setSelectedTopic] = useState("");
-  const [goalTasks, setGoalTasks] = useState("");
+  const [rounds, setRounds] = useState<RoundConfig[]>([{ topicId: "", goalTasks: "" }]);
   const [countdown, setCountdown] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -22,14 +17,29 @@ export default function Home({ onNavigate }: { onNavigate: (v: AppView) => void 
 
   async function loadTopics() {
     const res = await fetch("/api/topics");
-    const data = await res.json();
+    const data: Topic[] = await res.json();
     setTopics(data);
-    setSelectedTopic(data[0]?.id ?? "");
+    setRounds([{ topicId: data[0]?.id ?? "", goalTasks: "" }]);
     setMode("teacher");
   }
 
+  function updateRound(i: number, field: keyof RoundConfig, value: string) {
+    setRounds((prev) => prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r));
+  }
+
+  function addRound() {
+    setRounds((prev) => [...prev, { topicId: topics[0]?.id ?? "", goalTasks: "" }]);
+  }
+
+  function removeRound(i: number) {
+    setRounds((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
   async function createSession() {
-    if (!selectedTopic) return;
+    for (const r of rounds) {
+      if (!r.topicId) { setError("Velg tema for alle runder"); return; }
+      if (!r.goalTasks || parseInt(r.goalTasks) < 1) { setError("Sett et mål (min. 1) for alle runder"); return; }
+    }
     setLoading(true);
     setError("");
     try {
@@ -37,20 +47,20 @@ export default function Home({ onNavigate }: { onNavigate: (v: AppView) => void 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topicId: selectedTopic,
-          goalTasks: goalTasks ? parseInt(goalTasks) : undefined,
+          rounds: rounds.map((r) => ({ topicId: r.topicId, goalTasks: parseInt(r.goalTasks) })),
           countdownMinutes: countdown ? parseInt(countdown) : undefined,
         }),
       });
       const data = await res.json();
-      const topicName = topics.find((t) => t.id === selectedTopic)?.name ?? "";
+      const label = rounds.length === 1
+        ? (topics.find((t) => t.id === rounds[0].topicId)?.name ?? "")
+        : `${rounds.length} runder`;
       onNavigate({
         page: "teacher",
         sessionId: data.sessionId,
         code: data.code,
-        topicId: selectedTopic,
-        topicName,
-        goalTasks: goalTasks ? parseInt(goalTasks) : undefined,
+        rounds: rounds.map((r) => ({ topicId: r.topicId, goalTasks: parseInt(r.goalTasks) })),
+        topicLabel: label,
         countdownMinutes: countdown ? parseInt(countdown) : undefined,
       });
     } catch {
@@ -61,27 +71,23 @@ export default function Home({ onNavigate }: { onNavigate: (v: AppView) => void 
   }
 
   function joinSession() {
-    if (joinCode.length !== 6) {
-      setError("Koden må være 6 sifre");
-      return;
-    }
+    if (joinCode.length !== 6) { setError("Koden må være 6 sifre"); return; }
     setLoading(true);
     setError("");
     socket.connect();
     socket.emit("student:join", { code: joinCode }, (res: any) => {
       setLoading(false);
-      if (res.error) {
-        setError(res.error);
-        return;
-      }
+      if (res.error) { setError(res.error); return; }
       onNavigate({
         page: "student",
         sessionId: res.sessionId,
         studentId: res.studentId,
         username: res.username,
-        topicName: res.topic?.name ?? "",
+        topicName: res.topicName,
         goalTasks: res.goalTasks ?? undefined,
         countdownMinutes: res.countdownMinutes ?? undefined,
+        currentRound: res.currentRound,
+        totalRounds: res.totalRounds,
       });
     });
   }
@@ -113,39 +119,47 @@ export default function Home({ onNavigate }: { onNavigate: (v: AppView) => void 
         <div className={s.form}>
           <h2>Opprett økt</h2>
 
-          <label>
-            Velg tema
-            <select value={selectedTopic} onChange={(e) => setSelectedTopic(e.target.value)}>
-              {topics.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} — {t.grade}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className={s.row}>
-            <label>
-              Mål (antall rette)
-              <input
-                type="number"
-                min={1}
-                placeholder="Valgfritt"
-                value={goalTasks}
-                onChange={(e) => setGoalTasks(e.target.value)}
-              />
-            </label>
-            <label>
-              Nedtelling (minutter)
-              <input
-                type="number"
-                min={1}
-                placeholder="Valgfritt"
-                value={countdown}
-                onChange={(e) => setCountdown(e.target.value)}
-              />
-            </label>
+          <div className={s.roundsList}>
+            {rounds.map((r, i) => (
+              <div key={i} className={s.roundRow}>
+                <span className={s.roundNum}>Runde {i + 1}</span>
+                <select
+                  value={r.topicId}
+                  onChange={(e) => updateRound(i, "topicId", e.target.value)}
+                  className={s.roundSelect}
+                >
+                  {topics.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name} — {t.grade}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min={1}
+                  placeholder="Mål"
+                  value={r.goalTasks}
+                  onChange={(e) => updateRound(i, "goalTasks", e.target.value)}
+                  className={s.roundGoal}
+                />
+                <span className={s.roundGoalLabel}>rette</span>
+                {rounds.length > 1 && (
+                  <button className={s.removeRound} onClick={() => removeRound(i)}>✕</button>
+                )}
+              </div>
+            ))}
           </div>
+
+          <button className={s.addRound} onClick={addRound}>+ Legg til runde</button>
+
+          <label>
+            Nedtelling (minutter, valgfritt)
+            <input
+              type="number"
+              min={1}
+              placeholder="Ingen nedtelling"
+              value={countdown}
+              onChange={(e) => setCountdown(e.target.value)}
+            />
+          </label>
 
           {error && <p className={s.error}>{error}</p>}
           <div className={s.actions}>

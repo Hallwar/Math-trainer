@@ -175,6 +175,42 @@
 .feedbackCorrect { background: #dcfce7; color: #059669; }
 .feedbackWrong { background: #fee2e2; color: #dc2626; }
 
+.roundPill {
+  background: #1e40af;
+  color: white;
+  padding: 0.3rem 0.7rem;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.roundComplete {
+  background: white;
+  border-radius: 1.5rem;
+  padding: 2.5rem 2rem;
+  width: 100%;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  text-align: center;
+}
+.roundComplete h2 { font-size: 1.6rem; font-weight: 800; }
+.roundStats {
+  display: flex;
+  gap: 1.5rem;
+}
+.waitingNext {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
 .pauseScreen {
   background: white;
   border-radius: 1.5rem;

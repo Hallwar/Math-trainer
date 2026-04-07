@@ -81,6 +81,69 @@ input:focus, select:focus {
   font-weight: 700;
 }
 
+.roundsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.roundRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f9fafb;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+}
+.roundNum {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #6b7280;
+  white-space: nowrap;
+  min-width: 4.5rem;
+}
+.roundSelect {
+  flex: 1;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 0.4rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+.roundGoal {
+  width: 4.5rem !important;
+  text-align: center;
+  padding: 0.4rem 0.4rem !important;
+  font-size: 0.9rem !important;
+}
+.roundGoalLabel {
+  font-size: 0.8rem;
+  color: #6b7280;
+  white-space: nowrap;
+}
+.removeRound {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.3rem;
+}
+.removeRound:hover { background: #fee2e2; color: #dc2626; }
+
+.addRound {
+  align-self: flex-start;
+  background: none;
+  border: 2px dashed #d1d5db;
+  border-radius: 0.5rem;
+  padding: 0.4rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+}
+.addRound:hover { border-color: #2563eb; color: #2563eb; }
+
 .row {
   display: grid;
   grid-template-columns: 1fr 1fr;
