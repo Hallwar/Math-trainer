@@ -390,6 +390,32 @@ input:focus, select:focus {
 }
 .btnSecondary:hover { background: #e5e7eb; }
 
+.roundReorder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+.reorderBtn {
+  background: none;
+  border: none;
+  padding: 0 0.15rem;
+  font-size: 0.6rem;
+  line-height: 1;
+  color: #9ca3af;
+  cursor: pointer;
+  font-family: inherit;
+}
+.reorderBtn:hover:not(:disabled) { color: #2563eb; }
+.reorderBtn:disabled { opacity: 0.2; cursor: default; }
+.roundNum {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #6b7280;
+  min-width: 1.2rem;
+  text-align: center;
+}
+
 .historyBtn {
   background: none;
   border: none;

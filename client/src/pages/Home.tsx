@@ -7,7 +7,7 @@ import s from "./Home.module.css";
 interface Topic { id: string; name: string; description: string; grade: string }
 interface RoundConfig { type: "normal" | "demo" | "poll"; topicId: string; goalTasks: string; answerMode: "multiple_choice" | "input" }
 
-export default function Home({ onNavigate, onHistory, resumeError }: { onNavigate: (v: AppView) => void; onHistory: () => void; resumeError?: string }) {
+export default function Home({ onNavigate, onHistory }: { onNavigate: (v: AppView) => void; onHistory: () => void; resumeError?: string }) {
   const [mode, setMode] = useState<"choose" | "teacher" | "student">("choose");
   const [topics, setTopics] = useState<Topic[]>([]);
   const [rounds, setRounds] = useState<RoundConfig[]>([{ type: "normal", topicId: "", goalTasks: "", answerMode: "multiple_choice" }]);
@@ -33,11 +33,29 @@ export default function Home({ onNavigate, onHistory, resumeError }: { onNavigat
   }
 
   function addRound(type: "normal" | "demo" | "poll" = "normal") {
-    setRounds((prev) => [...prev, { type, topicId: topics[0]?.id ?? "", goalTasks: "", answerMode: "multiple_choice" }]);
+    setRounds((prev) => {
+      const last = prev[prev.length - 1];
+      return [...prev, {
+        type,
+        topicId: last?.topicId ?? topics[0]?.id ?? "",
+        goalTasks: "",
+        answerMode: last?.answerMode ?? "multiple_choice",
+      }];
+    });
   }
 
   function removeRound(i: number) {
     setRounds((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
+  function moveRound(i: number, dir: -1 | 1) {
+    setRounds((prev) => {
+      const next = [...prev];
+      const j = i + dir;
+      if (j < 0 || j >= next.length) return prev;
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
   }
 
   function loadTemplate(t: SessionTemplate) {
@@ -206,7 +224,11 @@ export default function Home({ onNavigate, onHistory, resumeError }: { onNavigat
           <div className={s.roundsList}>
             {rounds.map((r, i) => (
               <div key={i} className={`${s.roundRow} ${r.type === "demo" ? s.roundRowDemo : r.type === "poll" ? s.roundRowPoll : ""}`}>
-                <span className={s.roundNum}>Runde {i + 1}</span>
+                <div className={s.roundReorder}>
+                  <button className={s.reorderBtn} onClick={() => moveRound(i, -1)} disabled={i === 0}>▲</button>
+                  <span className={s.roundNum}>{i + 1}</span>
+                  <button className={s.reorderBtn} onClick={() => moveRound(i, 1)} disabled={i === rounds.length - 1}>▼</button>
+                </div>
                 <select value={r.type} onChange={(e) => updateRound(i, "type", e.target.value)} className={s.typeSelect}>
                   <option value="normal">Øving</option>
                   <option value="demo">Tavle</option>
