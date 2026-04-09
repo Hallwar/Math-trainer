@@ -24,7 +24,7 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: "*" } });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-interface Round { type: "normal" | "demo" | "poll"; topicId: string; goalTasks?: number; answerMode?: "multiple_choice" | "input" }
+interface Round { type: "normal" | "demo" | "poll"; topicId: string; goalTasks?: number; answerMode?: "multiple_choice" | "input" | "mixed" }
 
 // ─── Poll state ───────────────────────────────────────────────────────────────
 interface PollState {
@@ -379,7 +379,8 @@ io.on("connection", (socket) => {
     if (!topic) return;
     const q = topic.generate();
     const answerMode = rounds[session.current_round]?.answerMode ?? "multiple_choice";
-    if (answerMode === "input") {
+    const useInput = answerMode === "input" || (answerMode === "mixed" && Math.random() < 0.5);
+    if (useInput) {
       const { options: _o, optionLabels: _ol, ...rest } = q;
       callback(rest);
     } else {

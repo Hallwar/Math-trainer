@@ -5,7 +5,7 @@ import { loadTemplates, saveTemplate, deleteTemplate, type SessionTemplate } fro
 import s from "./Home.module.css";
 
 interface Topic { id: string; name: string; description: string; grade: string }
-interface RoundConfig { type: "normal" | "demo" | "poll"; topicId: string; goalTasks: string; answerMode: "multiple_choice" | "input" }
+interface RoundConfig { type: "normal" | "demo" | "poll"; topicId: string; goalTasks: string; answerMode: "multiple_choice" | "input" | "mixed" }
 
 export default function Home({ onNavigate, onHistory }: { onNavigate: (v: AppView) => void; onHistory: () => void; resumeError?: string }) {
   const [mode, setMode] = useState<"choose" | "teacher" | "student">("choose");
@@ -238,6 +238,7 @@ export default function Home({ onNavigate, onHistory }: { onNavigate: (v: AppVie
                   <select value={r.answerMode} onChange={(e) => updateRound(i, "answerMode", e.target.value)} className={s.answerModeSelect}>
                     <option value="multiple_choice">Flervalg</option>
                     <option value="input">Innskrivning</option>
+                    <option value="mixed">Blandet</option>
                   </select>
                 )}
                 <select value={r.topicId} onChange={(e) => updateRound(i, "topicId", e.target.value)} className={s.roundSelect}>

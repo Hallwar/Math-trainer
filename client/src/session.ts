@@ -12,7 +12,7 @@ export interface SavedTeacher {
   sessionId: string;
   code: string;
   topicLabel: string;
-  rounds: { type: "normal" | "demo" | "poll"; topicId: string; goalTasks?: number; answerMode?: "multiple_choice" | "input" }[];
+  rounds: { type: "normal" | "demo" | "poll"; topicId: string; goalTasks?: number; answerMode?: "multiple_choice" | "input" | "mixed" }[];
   countdownMinutes?: number;
 }
 
@@ -55,7 +55,7 @@ export interface HistoryRound {
   topicId: string;
   topicName: string;
   goalTasks?: number;
-  answerMode?: "multiple_choice" | "input";
+  answerMode?: "multiple_choice" | "input" | "mixed";
   totalCorrect: number;
   wrongQuestions: { question_text: string; correct_answer: number; error_count: number }[];
 }
@@ -98,7 +98,7 @@ export function clearHistory() {
 export interface SessionTemplate {
   id: string;
   name: string;
-  rounds: { type: "normal" | "demo" | "poll"; topicId: string; goalTasks?: number; answerMode?: "multiple_choice" | "input" }[];
+  rounds: { type: "normal" | "demo" | "poll"; topicId: string; goalTasks?: number; answerMode?: "multiple_choice" | "input" | "mixed" }[];
   countdownMinutes?: number;
   createdAt: number;
 }

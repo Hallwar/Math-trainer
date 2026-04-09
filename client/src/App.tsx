@@ -10,7 +10,7 @@ export interface RoundConfig {
   type: "normal" | "demo" | "poll";
   topicId: string;
   goalTasks?: number;
-  answerMode?: "multiple_choice" | "input";
+  answerMode?: "multiple_choice" | "input" | "mixed";
 }
 
 export type AppView =
