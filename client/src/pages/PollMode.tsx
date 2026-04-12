@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { socket } from "../socket";
+import { renderMathText } from "../utils/math";
 import s from "./PollMode.module.css";
 
 interface PollQuestion {
@@ -77,7 +78,7 @@ export default function PollMode({ sessionId, topicName, roundIndex, totalRounds
       ) : (
         <div className={s.main}>
           <div className={s.questionBox}>
-            <p className={s.questionText}>{question.text}</p>
+            <p className={s.questionText}>{renderMathText(question.text)}</p>
           </div>
 
           <div className={s.bars}>
@@ -87,9 +88,10 @@ export default function PollMode({ sessionId, topicName, roundIndex, totalRounds
               const barWidth = Math.round((count / maxVotes) * 100);
               const isCorrect = opt === question.answer;
               const label = optionLabels ? optionLabels[i] : String(opt);
+              const labelNode = renderMathText(label);
               return (
                 <div key={i} className={`${s.barRow} ${revealed && isCorrect ? s.barRowCorrect : ""} ${revealed && !isCorrect ? s.barRowWrong : ""}`}>
-                  <div className={s.barLabel}>{label}</div>
+                  <div className={s.barLabel}>{labelNode}</div>
                   <div className={s.barTrack}>
                     <div
                       className={`${s.barFill} ${revealed && isCorrect ? s.barFillCorrect : ""}`}

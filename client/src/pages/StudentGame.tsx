@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { socket } from "../socket";
 import DemoStudent from "./DemoStudent";
 import PollStudent from "./PollStudent";
+import { renderMathText } from "../utils/math";
 import s from "./StudentGame.module.css";
 
 interface Question {
@@ -229,7 +230,7 @@ export default function StudentGame({ username, topicName: initialTopicName, goa
 
         {(gameState === "playing" || gameState === "answered") && question && (
           <div className={s.questionCard}>
-            <p className={s.questionText}>{question.text}</p>
+            <p className={s.questionText}>{renderMathText(question.text)}</p>
             {question.options ? (
               <div className={s.options}>
                 {question.options.map((opt, i) => {
@@ -241,7 +242,7 @@ export default function StudentGame({ username, topicName: initialTopicName, goa
                   const label = question.optionLabels ? question.optionLabels[i] : String(opt);
                   return (
                     <button key={opt} className={cls} onClick={() => submitAnswer(opt)} disabled={gameState === "answered"}>
-                      {label}
+                      {renderMathText(label)}
                     </button>
                   );
                 })}

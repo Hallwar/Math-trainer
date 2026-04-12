@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { socket } from "../socket";
+import { renderMathText } from "../utils/math";
 import s from "./PollStudent.module.css";
 
 interface PollQuestion {
@@ -77,7 +78,7 @@ export default function PollStudent({ username, topicName, roundIndex, totalRoun
           </div>
         ) : (
           <div className={s.questionCard}>
-            <p className={s.questionText}>{question.text}</p>
+            <p className={s.questionText}>{renderMathText(question.text)}</p>
             <div className={s.options}>
               {question.options.map((opt, i) => {
                 const label = question.optionLabels ? question.optionLabels[i] : String(opt);
@@ -96,7 +97,7 @@ export default function PollStudent({ username, topicName, roundIndex, totalRoun
                     onClick={() => vote(i, opt)}
                     disabled={voted}
                   >
-                    {label}
+                    {renderMathText(label)}
                   </button>
                 );
               })}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { socket } from "../socket";
+import { renderMathText } from "../utils/math";
 import s from "./DemoStudent.module.css";
 
 interface Question { id: string; text: string; answer: number }
@@ -52,7 +53,7 @@ export default function DemoStudent({ username, topicName, roundIndex, totalRoun
         ) : (
           <div className={s.card}>
             <p className={s.label}>Oppgave</p>
-            <p className={s.questionText}>{question.text}</p>
+            <p className={s.questionText}>{renderMathText(question.text)}</p>
             {revealed ? (
               <div className={s.answer}>
                 <span className={s.answerLabel}>Svar:</span>

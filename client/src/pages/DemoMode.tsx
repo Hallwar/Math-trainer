@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { socket } from "../socket";
+import { renderMathText } from "../utils/math";
 import s from "./DemoMode.module.css";
 
 interface Question {
@@ -125,7 +126,7 @@ export default function DemoMode({ sessionId, topicName, roundIndex, totalRounds
         {/* Question area */}
         <div className={s.questionArea}>
           {question ? (
-            <p className={s.questionText}>{question.text}</p>
+            <p className={s.questionText}>{renderMathText(question.text)}</p>
           ) : (
             <p className={s.placeholder}>Trykk "Ny oppgave" for å starte</p>
           )}
